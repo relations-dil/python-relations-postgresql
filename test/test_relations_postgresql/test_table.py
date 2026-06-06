@@ -18,6 +18,7 @@ class Meta(relations.Model):
     stuff = list
     things = dict, {"extract": "for__0____1"}
     push = str, {"inject": "stuff___1__relations.io____1"}
+    tied = str, {"store": False}
 
     INDEX = "spend"
 
@@ -116,7 +117,7 @@ ALTER TABLE "dreaming"."evil" RENAME TO "good";
         ddl = TABLE(
             migration={
                 "fields": {
-                    "add": Meta.thy().define()["fields"][-2:]
+                    "add": Meta.thy().define()["fields"][-3:]
                 }
             },
             definition=Simple.thy().define()

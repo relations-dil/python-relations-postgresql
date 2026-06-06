@@ -7,7 +7,7 @@ with open("README.md", "r") as readme_file:
 
 setup(
     name="relations-postgresql",
-    version="0.6.2",
+    version="0.6.3",
     package_dir = {'': 'lib'},
     py_modules = [
         'relations_postgresql',
@@ -23,7 +23,7 @@ setup(
         'relations_postgresql.table'
     ],
     install_requires=[
-        'relations-sql>=0.6.7'
+        'relations-sql>=0.6.8'
     ],
     url="https://github.com/relations-dil/python-relations-postgresql",
     author="Gaffer Fitch",
