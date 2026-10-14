@@ -385,3 +385,56 @@ class TestExecute(unittest.TestCase):
         ddl.generate(indent=2)
 
         self.execute(ddl.sql)
+
+        class Slug(relations.Model):
+
+            SCHEMA = "unit"
+
+            id = str
+            name = str
+
+        ddl = TABLE(Slug.thy().define())
+        ddl.generate(indent=2)
+        self.execute(ddl.sql)
+
+        cursor = self.connection.cursor()
+
+        # ids that differ only by case are different ids, a repeat is refused
+
+        cursor.execute("""INSERT INTO "unit"."slug" ("id","name") VALUES ('abc.pet.main.unum','lower'),('ABC.PET.MAIN.UNUM','upper')""")
+        cursor.execute("""SELECT "id" FROM "unit"."slug" ORDER BY "id" """)
+        self.assertEqual([row["id"] for row in cursor.fetchall()], ["ABC.PET.MAIN.UNUM", "abc.pet.main.unum"])
+
+        self.assertRaises(psycopg2.IntegrityError, cursor.execute, """INSERT INTO "unit"."slug" ("id","name") VALUES ('abc.pet.main.unum','again')""")
+
+        class Num(relations.Model):
+
+            SCHEMA = "unit"
+
+            id = int, {"auto": True}
+            name = str
+
+        ddl = TABLE(Num.thy().define())
+        ddl.generate(indent=2)
+        self.execute(ddl.sql)
+
+        cursor = self.connection.cursor()
+
+        cursor.execute("""INSERT INTO "unit"."num" ("name") VALUES ('one')""")
+
+        # int to string, the sequence is no longer the default
+
+        ddl = TABLE(
+            migration={"fields": {"change": {"id": {"kind": "str", "auto": False, "none": False, "readonly": True}}}},
+            definition=Num.thy().define()
+        )
+        ddl.generate(indent=2)
+        self.execute(ddl.sql)
+
+        cursor.execute("""INSERT INTO "unit"."num" ("id","name") VALUES ('abc','lower'),('ABC','upper')""")
+        cursor.execute("""SELECT "id" FROM "unit"."num" ORDER BY "id" """)
+        self.assertEqual([row["id"] for row in cursor.fetchall()], ["1", "ABC", "abc"])
+
+        # an insert without an id is refused, it doesn't get the next number
+
+        self.assertRaises(psycopg2.IntegrityError, cursor.execute, """INSERT INTO "unit"."num" ("name") VALUES ('none')""")

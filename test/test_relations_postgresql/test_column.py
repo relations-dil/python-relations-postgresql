@@ -30,6 +30,40 @@ class TestCOLUMN(unittest.TestCase):
         ddl.kind(sql)
         self.assertEqual(sql, ["""ALTER "id" TYPE INT8 USING "id"::INT8"""])
 
+    def test_modify(self):
+
+        # an id that stops being an auto int loses the sequence default BIGSERIAL gave it
+
+        definition = relations.Field(int, name="id", auto=True).define()
+
+        ddl = COLUMN(migration={"kind": "str", "none": False}, definition=definition)
+        ddl.generate()
+        self.assertEqual(ddl.sql, """ALTER "id" TYPE VARCHAR(255) USING "id"::VARCHAR(255),ALTER "id" SET NOT NULL,ALTER "id" DROP DEFAULT""")
+
+        ddl = COLUMN(migration={"auto": False}, definition=definition)
+        ddl.generate(indent=2)
+        self.assertEqual(ddl.sql, """ALTER "id" DROP DEFAULT""")
+
+        ddl = COLUMN(migration={"kind": "str", "default": None}, definition=definition)
+        ddl.generate()
+        self.assertEqual(ddl.sql, """ALTER "id" TYPE VARCHAR(255) USING "id"::VARCHAR(255),ALTER "id" DROP DEFAULT""")
+
+        ddl = COLUMN(migration={"kind": "str", "none": False}, definition=definition)
+        ddl.generate(indent=2)
+        self.assertEqual(ddl.sql, """ALTER "id" TYPE VARCHAR(255) USING "id"::VARCHAR(255),
+ALTER "id" SET NOT NULL,
+ALTER "id" DROP DEFAULT""")
+
+        # still an auto int, or not auto to begin with, nothing to drop
+
+        ddl = COLUMN(migration={"none": False}, definition=definition)
+        ddl.generate()
+        self.assertEqual(ddl.sql, """ALTER "id" SET NOT NULL""")
+
+        ddl = COLUMN(migration={"kind": "str"}, definition=relations.Field(int, name="id").define())
+        ddl.generate()
+        self.assertEqual(ddl.sql, """ALTER "id" TYPE VARCHAR(255) USING "id"::VARCHAR(255)""")
+
     def test_generate(self):
 
         field = relations.Field(bool, name="flag")

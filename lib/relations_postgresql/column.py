@@ -48,3 +48,21 @@ class COLUMN(relations_postgresql.DDL, relations_sql.COLUMN):
         cast = self.KINDS.get(self.migration.get("kind", self.definition["kind"]), self.KINDS["json"])
 
         sql.append(f'ALTER {self.name()} TYPE {cast} USING {self.name()}::{cast}')
+
+    def modify(self, indent=0, count=0, pad=' ', **kwargs):
+        """
+        MODIFY DLL, an id that stops being an auto int also loses the sequence default BIGSERIAL gave it
+        """
+
+        super().modify(indent=indent, count=count, pad=pad, **kwargs)
+
+        migration = self.migration
+
+        stops = migration.get("auto") is False or migration.get("kind", "int") != "int"
+
+        if self.definition.get("auto") and "default" not in migration and stops:
+
+            current = pad * (count * indent)
+            delimitter = f",\n{current}" if indent else ','
+
+            self.sql = delimitter.join(filter(None, [self.sql, self.UNSET_DEFAULT % self.name()]))

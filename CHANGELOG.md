@@ -14,6 +14,11 @@ All notable changes to python-relations-postgresql are recorded here, newest fir
 - Every `docker run` in the `Makefile` uses `--rm`, and a replaced database container is removed with its volume (`docker rm --force -v`), so builds and test runs leave no stopped containers or volumes behind.
 - `testpypi` and `pypi` run in the current `python` image with `build` and `twine` installed on the fly, so the custom `gaf3/pypi` image is no longer used.
 
+## [0.6.4] - 2026-10-14
+
+### Fixed
+- Changing an id from an auto int to a string (relations-dil 0.6.18) drops the sequence default `BIGSERIAL` gave it, whether the migration says `auto` is gone or only changes the kind. It used to keep `DEFAULT nextval(...)`, so an insert without an id got the next number as a string instead of being refused as `NOT NULL`. Needs relations-sql 0.6.10, which sees a change to `auto`.
+
 ## [0.6.3] - 2026-06-06
 
 - Bumped the `relations-sql` requirement to 0.6.8 and `relations-dil` to 0.6.14, supporting many-to-many relations.
