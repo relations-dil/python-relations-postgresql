@@ -5,6 +5,8 @@ All notable changes to python-relations-postgresql are recorded here, newest fir
 
 ## [Unreleased]
 
+## [0.6.5] - 2026-10-26
+
 ### Added
 - Jenkins releases on a merge to `main`: a `release` stage (only on `main`) runs `make release`, which does nothing for a version that is already released and otherwise does the test release, the release and the tag. It pushes the tag with the `github` credential, as Leroy Jenkins, one build at a time, with a two hour timeout (relations-dil/python-relations#80). The package builds run in a copy with only the files they use mounted read-only, so nothing root-owned is left in the workspace, and `make tag` stops on a failure instead of ignoring it. The release scripts work with the older git on the Jenkins host.
 - `make help` lists every target with what it does (each target has a `## description` after it), and is what a bare `make` runs.
@@ -12,6 +14,8 @@ All notable changes to python-relations-postgresql are recorded here, newest fir
 - A `VERSION` file as the one place the version is set: the `Makefile` reads it and mounts it, `testpypi` and `pypi` pass it as `BUILD_VERSION`, and `setup.py` reads `BUILD_VERSION` or the file.
 
 ### Changed
+- Requires `relations-sql` 0.6.11 (`requirements.txt` and `setup.py`), so a change to only a str field's `length` reaches the `ALTER` (relations-dil/python-relations-postgresql#15).
+- A str field's `length` is honored: it makes the column `VARCHAR(length)` when created, added or changed, instead of always `VARCHAR(255)`, which stays the default for a str with no length. Anything that isn't a str ignores `length` (relations-dil/python-relations-postgresql#15).
 - `make release-check` and `make release` don't run `build`, `test`, `lint` and `setup` again: the Jenkins stages have just run them before the release stage, so it was the same work twice. Run them yourself before checking by hand, as `make release-check` is only the checks and `dist-check` now (relations-dil/python-relations#90).
 - Every `docker run` in the `Makefile` uses `--rm`, and a replaced database container is removed with its volume (`docker rm --force -v`), so builds and test runs leave no stopped containers or volumes behind.
 - `testpypi` and `pypi` run in the current `python` image with `build` and `twine` installed on the fly, so the custom `gaf3/pypi` image is no longer used.

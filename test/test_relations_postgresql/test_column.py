@@ -30,6 +30,75 @@ class TestCOLUMN(unittest.TestCase):
         ddl.kind(sql)
         self.assertEqual(sql, ["""ALTER "id" TYPE INT8 USING "id"::INT8"""])
 
+    def test_cast(self):
+
+        ddl = COLUMN(store="name", kind="str")
+
+        self.assertEqual(ddl.cast("str", None), "VARCHAR(255)")
+        self.assertEqual(ddl.cast("str", 64), "VARCHAR(64)")
+        self.assertEqual(ddl.cast("int", 64), "INT8")
+        self.assertEqual(ddl.cast("unknown", None), "JSONB")
+
+    def test_length(self):
+
+        # a str with a length is that long, one without is 255, and the length of anything else is ignored
+
+        definition = relations.Field(str, name="name").define()
+
+        ddl = COLUMN(migration={"kind": "str", "length": 64}, definition=definition)
+        sql = []
+        ddl.kind(sql)
+        self.assertEqual(sql, ["""ALTER "name" TYPE VARCHAR(64) USING "name"::VARCHAR(64)"""])
+
+        ddl = COLUMN(migration={"length": 64}, definition=definition)
+        ddl.generate()
+        self.assertEqual(ddl.sql, """ALTER "name" TYPE VARCHAR(64) USING "name"::VARCHAR(64)""")
+
+        ddl = COLUMN(migration={"length": 64, "none": False}, definition=definition)
+        ddl.generate()
+        self.assertEqual(ddl.sql, """ALTER "name" TYPE VARCHAR(64) USING "name"::VARCHAR(64),ALTER "name" SET NOT NULL""")
+
+        # the length going away goes back to the default
+
+        ddl = COLUMN(migration={"length": None}, definition=relations.Field(str, name="name", length=64).define())
+        ddl.generate()
+        self.assertEqual(ddl.sql, """ALTER "name" TYPE VARCHAR(255) USING "name"::VARCHAR(255)""")
+
+        # becoming a str takes the new length, becoming something else drops the old one
+
+        ddl = COLUMN(migration={"kind": "str", "length": 64}, definition=relations.Field(int, name="name").define())
+        ddl.generate()
+        self.assertEqual(ddl.sql, """ALTER "name" TYPE VARCHAR(64) USING "name"::VARCHAR(64)""")
+
+        ddl = COLUMN(migration={"kind": "int"}, definition=relations.Field(str, name="name", length=64).define())
+        ddl.generate()
+        self.assertEqual(ddl.sql, """ALTER "name" TYPE INT8 USING "name"::INT8""")
+
+        # a length that isn't on a str is left alone
+
+        ddl = COLUMN(migration={"length": 64}, definition=relations.Field(int, name="id").define())
+        ddl.generate()
+        self.assertEqual(ddl.sql, "")
+
+        # created and added
+
+        field = relations.Field(str, "name", store="_name", default="Willy", none=False, length=64)
+        ddl = COLUMN(field.define())
+        ddl.generate()
+        self.assertEqual(ddl.sql, """"_name" VARCHAR(64) NOT NULL DEFAULT 'Willy'""")
+
+        ddl = COLUMN(field.define(), added=True)
+        ddl.generate()
+        self.assertEqual(ddl.sql, """ADD "_name" VARCHAR(64) NOT NULL DEFAULT 'Willy'""")
+
+        ddl = COLUMN(relations.Field(str, name="name").define())
+        ddl.generate()
+        self.assertEqual(ddl.sql, """"name" VARCHAR(255)""")
+
+        ddl = COLUMN(relations.Field(int, name="id", length=64).define())
+        ddl.generate()
+        self.assertEqual(ddl.sql, """"id" INT8""")
+
     def test_modify(self):
 
         # an id that stops being an auto int loses the sequence default BIGSERIAL gave it
