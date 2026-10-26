@@ -30,6 +30,26 @@ class COLUMN(relations_postgresql.DDL, relations_sql.COLUMN):
     SET_NONE = """ALTER %s SET NOT NULL"""
     UNSET_NONE = """ALTER %s DROP NOT NULL"""
 
+    def cast(self, kind, length):
+        """
+        Get the type of a kind, a str with a length being that long
+        """
+
+        if kind == "str" and length:
+            return f"VARCHAR({length})"
+
+        return self.KINDS.get(kind, self.KINDS["json"])
+
+    def create(self, **kwargs):
+        """
+        CREATE DLL, a str with a length being that long
+        """
+
+        super().create(**kwargs)
+
+        if self.migration.get("kind") == "str" and self.migration.get("length") and "__" not in self.migration["store"]:
+            self.sql = self.sql.replace(self.KINDS["str"], self.cast("str", self.migration["length"]), 1)
+
     def extract(self, kind, sql, **kwargs):
         """
         Get extract DDL
@@ -45,14 +65,21 @@ class COLUMN(relations_postgresql.DDL, relations_sql.COLUMN):
         Modifies the kind
         """
 
-        cast = self.KINDS.get(self.migration.get("kind", self.definition["kind"]), self.KINDS["json"])
+        cast = self.cast(
+            self.migration.get("kind", self.definition["kind"]),
+            self.migration.get("length", self.definition.get("length"))
+        )
 
         sql.append(f'ALTER {self.name()} TYPE {cast} USING {self.name()}::{cast}')
 
     def modify(self, indent=0, count=0, pad=' ', **kwargs):
         """
-        MODIFY DLL, an id that stops being an auto int also loses the sequence default BIGSERIAL gave it
+        MODIFY DLL, an id that stops being an auto int also loses the sequence default BIGSERIAL gave it, and a
+        str changing its length gets a new kind
         """
+
+        if "length" in self.migration and "kind" not in self.migration and self.definition["kind"] == "str":
+            self.migration = {**self.migration, "kind": "str"}
 
         super().modify(indent=indent, count=count, pad=pad, **kwargs)
 
